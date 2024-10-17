@@ -1,0 +1,166 @@
+/* General body styling */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: black;
+    color: white;
+    padding: 20px;
+    margin: 0;
+}
+
+/* Styling for the Time Zones Section */
+#timezones {
+    margin: 20px 0;
+    text-align: center;
+}
+
+/* Center the Time Zone Header */
+.timezone-header {
+    font-size: 1.8em;
+    margin-bottom: 15px;
+    text-align: center;
+    color: white;
+}
+
+/* Flexbox styling to spread times across the screen in a row */
+.time-row {
+    display: flex;                /* Enable Flexbox */
+    justify-content: center;      /* Center the time zones horizontally */
+    align-items: center;          /* Vertically center the times */
+    width: 100%;                  /* Ensure it spans the full width */
+    margin-top: 20px;
+    gap: 10px;                    /* Add spacing between time zones */
+    /*flex-wrap: nowrap;              /* Allows wrapping if the screen size is too small */
+}
+
+/* Styling for individual time zone paragraphs */
+.time-row p {
+    margin: 0;
+    padding: 10px;
+    font-size: 1.5em;
+    color: white;
+    text-align: center;              /* Center the text inside each time zone */
+    border: 1px solid white;         /* Optional: Add a border to each time zone */
+    border-radius: 5px;              /* Optional: Add a little rounding */
+    background-color: rgba(255, 255, 255, 0.1); /* Optional: Slight background */
+    flex: 1;                         /* Make all time zones take up equal space */
+    min-width: 150px;                /* Ensure each time zone has a minimum width */
+    max-width: 200px;                /* Set a maximum width to control the size */  
+    /*flex: 1 1 100px;               /* Allow items to shrink if needed */
+}
+
+
+/* Styling for Calendar */
+#calendar {
+    background-color: rgb(4, 4, 4);
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+}
+
+/* Weather Box Styling */
+.weather-box {
+    border: 2px solid yellow;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+}
+
+/* Weather conditions styling */
+.weather-box.clear {
+    color: green;
+}
+
+.weather-box.rain {
+    color: red;
+}
+
+.weather-box.snow {
+    color: blue;
+}
+
+
+/* General text styling */
+h3 {
+    color: white;
+}
+
+p {
+    color: white;
+}
+
+/* Flexbox styling for daily forecast */
+.daily-forecast {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.daily-forecast-item {
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.2);
+    text-align: center;
+}
+
+
+.forecast-container {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.forecast-item {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    margin: 10px;
+    border: 1px solid white;
+    border-radius: 5px;
+    width: 120px;
+    text-align: center;
+}
+
+#calendar {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.4); /* Black background with opacity */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 300px; /* Set a width */
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+
+
+

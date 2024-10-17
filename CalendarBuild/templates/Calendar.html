@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Calendar with Weather and Sports Scores</title>
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js'></script>
+    <script src="https://momentjs.com/downloads/moment-timezone-with-data.min.js"></script>
+    <!-- Use url_for to properly link to static files -->
+    <link rel="stylesheet" href="static/Calendar.css">
+</head>
+<body>
+    <h1 class="main-title">Digital Calendar</h1>
+
+    <!-- Calendar -->
+    <div id='calendar'></div>
+
+    <!-- Time Zones -->
+    <div id="timezones">
+        <h3 class="timezone-header">Current Time in U.S. Time Zones</h3>
+        <div class="time-row">
+        <p id="eastern-time">Eastern Time: --</p>
+        <p id="central-time">Central Time: --</p>
+        <p id="mountain-time">Mountain Time: --</p>
+        <p id="pacific-time">Pacific Time: --</p>
+        </div>
+    </div>
+
+    <!-- Weather Info -->
+    <div id="weather">
+        <h3>Current Weather</h3>
+        <p id="weather-info">Current Temp: --°F, Wind Speed: -- mph</p>
+    
+            <div id="forecast">
+            <p>Loading forecast...</p>
+        </div>
+    </div>
+
+   
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var selectedEvent = null; // To store the event that is being edited or deleted
+
+    // Create the modal in HTML
+    var modalHTML = `
+        <div id="eventModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h4>What would you like to do with this event?</h4>
+                <button id="editEventButton">Edit</button>
+                <button id="deleteEventButton">Delete</button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML); // Append modal to the body
+
+    var modal = document.getElementById('eventModal');
+    var closeModal = document.querySelector('.close');
+
+    // Show modal
+    function showModal(event) {
+        selectedEvent = event; // Store the event for later use
+        modal.style.display = 'block';
+    }
+
+    // Close modal
+    closeModal.onclick = function() {
+        modal.style.display = 'none';
+    };
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    // Handle Edit button click
+    document.getElementById('editEventButton').onclick = function() {
+        modal.style.display = 'none';
+        var newTitle = prompt('Edit event title:', selectedEvent.title);
+        var newEndDate = prompt('Edit end date (YYYY-MM-DD) for multi-day events, or leave blank for single-day event:', selectedEvent.end ? selectedEvent.end.toISOString().split('T')[0] : '');
+
+        if (newTitle) {
+            let updatedEvent = {
+                title: newTitle,
+                start: selectedEvent.start.toISOString().split('T')[0],
+                end: newEndDate ? new Date(newEndDate).toISOString().split('T')[0] : selectedEvent.start.toISOString().split('T')[0],
+                color: selectedEvent.backgroundColor
+            };
+
+            // Update on the server
+            fetch(`/appointments/${selectedEvent.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedEvent)
+            }).then(response => {
+                if (response.ok) {
+                    // Update event on the calendar
+                    selectedEvent.setProp('title', newTitle);
+                    selectedEvent.setDates(updatedEvent.start, updatedEvent.end);
+                } else {
+                    response.text().then(text => {
+                        console.error('Failed to update event:', text);
+                        alert('Failed to update event');
+                    });
+                }
+            }).catch(error => {
+                console.error('Error during PUT request:', error);
+                alert('Error updating event');
+            });
+        }
+    };
+
+    // Handle Delete button click
+    document.getElementById('deleteEventButton').onclick = function() {
+        modal.style.display = 'none';
+        if (confirm('Are you sure you want to delete this event?')) {
+            fetch(`/appointments/${selectedEvent.id}`, {
+                method: 'DELETE'
+            }).then(response => {
+                if (response.ok) {
+                    selectedEvent.remove();
+                } else {
+                    response.text().then(text => {
+                        console.error('Failed to delete event:', text);
+                        alert('Failed to delete event');
+                    });
+                }
+            }).catch(error => {
+                console.error('Error during DELETE request:', error);
+                alert('Error deleting event');
+            });
+        }
+    };
+
+    // Function to generate the list of birthdays for a given year
+    function generateBirthdays(year) {
+        return [
+            { title: 'Lee\'s Birthday', start: `${year}-06-04`, color: '#48D1CC' },
+            { title: 'Bethany\'s Birthday', start: `${year}-09-17`, color: '#48D1CC' },
+            { title: 'Ashton\'s Birthday', start: `${year}-03-07`, color: '#48D1CC' },
+            { title: 'Jewel\'s Birthday', start: `${year}-08-20`, color: '#48D1CC' },
+            { title: 'Valeny\'s Birthday', start: `${year}-12-04`, color: '#48D1CC' }
+        ];
+    }
+
+    // Function to generate the list of holidays for a given year
+    function generateHolidays(year) {
+        return [
+            { title: 'New Year\'s Day', start: `${year}-01-01`, color: '#CC00FF' },
+            { title: 'Memorial Day', start: getMemorialDayDate(year), color: '#CC00FF' },
+            { title: 'Independence Day', start: `${year}-07-04`, color: '#CC00FF' },
+            { title: 'Labor Day', start: getLaborDayDate(year), color: '#CC00FF' },
+            { title: 'Halloween', start: `${year}-10-31`, color: '#CC00FF' },
+            { title: 'Veteran\'s Day', start: `${year}-11-11`, color: '#CC00FF' },
+            { title: 'Thanksgiving Day', start: getThanksgivingDate(year), color: '#CC00FF' },
+            { title: 'Christmas Day', start: `${year}-12-25`, color: '#CC00FF' },
+            { title: 'New Year\'s Eve', start: `${year}-12-31`, color: '#CC00FF' }
+        ];
+    }
+
+    // Function to get the date of Memorial Day (last Monday of May)
+    function getMemorialDayDate(year) {
+        var date = new Date(year, 4, 31); // May 31st
+        var day = date.getDay(); // Get the day of the week of May 31st
+        var offset = (day === 0) ? 6 : day - 1; // Calculate the offset to the last Monday
+        date.setDate(31 - offset); // Set the date to the last Monday of May
+        return date.toISOString().split('T')[0]; // Return in YYYY-MM-DD format
+    }
+
+    // Function to get the date of Labor Day (first Monday of September)
+    function getLaborDayDate(year) {
+        var date = new Date(year, 8, 1); // September 1st
+        var day = date.getDay(); // Get the day of the week of September 1st
+        var offset = (day === 0) ? 1 : (8 - day); // Calculate the offset to the first Monday
+        date.setDate(1 + offset); // Set the date to the first Monday of September
+        return date.toISOString().split('T')[0]; // Return in YYYY-MM-DD format
+    }
+
+    // Function to get the date of Thanksgiving (fourth Thursday of November)
+    function getThanksgivingDate(year) {
+        var date = new Date(year, 10, 1); // November 1st
+        var day = date.getDay(); // Get the day of the week of November 1st
+        var offset = (day <= 4) ? (4 - day) : (11 - day); // Calculate the offset to the fourth Thursday
+        date.setDate(1 + offset + 21); // Set date to the fourth Thursday
+        return date.toISOString().split('T')[0]; // Return in YYYY-MM-DD format
+    }
+
+    // Initialize FullCalendar
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        eventSources: [
+            {
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    var currentYear = fetchInfo.start.getFullYear();
+                    successCallback([...generateBirthdays(currentYear), ...generateHolidays(currentYear)]);
+                },
+                color: '#48D1CC',
+                textColor: 'black'
+            },
+            {
+                url: '/appointments',  // Endpoint for appointments
+                method: 'GET',
+                failure: function() {
+                    alert('There was an error while fetching events!');
+                }
+            }
+        ],
+
+        eventClick: function(info) {
+            showModal(info.event);
+        },
+
+        dateClick: function(info) {
+            var title = prompt('Enter event title:');
+            var person = prompt('Who is the event for? (Lee, Bethany, Ashton, etc.)');
+            var endDate = prompt('Enter end date (YYYY-MM-DD) for multi-day events, or leave blank for single-day event:');
+
+            if (title && person) {
+                let color;
+                switch (person.toLowerCase()) {
+                    case 'lee':
+                        color = '#733635'; // Garnet
+                        break;
+                    case 'bethany':
+                        color = '#DC143C'; // Crimson
+                        break;
+                    case 'ashton':
+                        color = '#0000FF'; // Blue
+                        break;
+                    default:
+                        color = '#006400';  // Default for general events
+                }
+
+                let endDateObj;
+                if (!endDate) {
+                    endDateObj = new Date(info.dateStr);
+                    endDateObj.setDate(endDateObj.getDate() + 1);
+                } else {
+                    endDateObj = new Date(endDate);
+                    endDateObj.setDate(endDateObj.getDate() + 1);
+                }
+
+                fetch('/appointments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        start: info.dateStr,
+                        end: endDateObj.toISOString().split('T')[0],
+                        description: '',
+                        color: color
+                    })
+                }).then(response => {
+                    if (response.ok) {
+                        response.json().then(event => {
+                            calendar.addEvent({
+                                id: event.id,
+                                title: title,
+                                start: info.dateStr,
+                                end: endDateObj.toISOString().split('T')[0],
+                                color: color
+                            });
+                        });
+                    } else {
+                        response.text().then(text => {
+                            console.error('Failed to add event:', text);
+                            alert('Failed to add event');
+                        });
+                    }
+                }).catch(error => {
+                    console.error('Error during POST request:', error);
+                    alert('Error adding event');
+                });
+            }
+        },
+
+        eventContent: function(info) {
+            return {
+                html: `<div style="background-color: ${info.event.extendedProps.color};">${info.event.title}</div>`
+            };
+        }
+    });
+
+    calendar.render();
+});
+
+            // Fetch US timezones
+        function updateTimeZones(){
+            fetch('/timezones')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('eastern-time').innerText = 'Eastern Time: ' + data.Eastern;
+                    document.getElementById('central-time').innerText = 'Central Time: ' + data.Central;
+                    document.getElementById('mountain-time').innerText = 'Mountain Time: ' + data.Mountain;
+                    document.getElementById('pacific-time').innerText = 'Pacific Time: ' + data.Pacific;
+                })
+                .catch(error => {
+                    console.error('Error updating time zones:', error);
+                })
+            }
+
+            // Update time zones every second (1000 milliseconds)
+            setInterval(updateTimeZones, 1000);
+
+            // Call the function initially to set the time when the page loads
+            updateTimeZones();
+
+// Weather information
+document.addEventListener('DOMContentLoaded', function () {
+
+    // Function to convert wind direction degrees to compass direction
+    function getCompassDirection(degrees) {
+        const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+        const index = Math.round(degrees / 45) % 8;
+        return directions[index];
+    }
+
+    // Function to get the weather icon based on the WMO weather code
+    function getWeatherIcon(weatherCode) {
+        switch (weatherCode) {
+            case 0:
+                return '☀️'; // Clear sky
+            case 1:
+            case 2:
+            case 3:
+                return '🌤️'; // Mainly clear, partly cloudy, and overcast
+            case 45:
+            case 48:
+                return '🌫️'; // Fog and depositing rime fog
+            case 51:
+            case 53:
+            case 55:
+                return '🌧️'; // Drizzle: Light, moderate, and dense intensity
+            case 56:
+            case 57:
+                return '🌧️'; // Freezing Drizzle: Light and dense intensity
+            case 61:
+            case 63:
+            case 65:
+                return '🌧️'; // Rain: Slight, moderate, and heavy intensity
+            case 66:
+            case 67:
+                return '🌧️❄️'; // Freezing Rain: Light and heavy intensity
+            case 71:
+            case 73:
+            case 75:
+                return '🌨️'; // Snow fall: Slight, moderate, and heavy intensity
+            case 77:
+                return '🌨️'; // Snow grains
+            case 80:
+            case 81:
+            case 82:
+                return '🌧️'; // Rain showers: Slight, moderate, and violent
+            case 85:
+            case 86:
+                return '🌨️'; // Snow showers slight and heavy
+            case 95:
+                return '⛈️'; // Thunderstorm: Slight or moderate
+            case 96:
+            case 99:
+                return '⛈️'; // Thunderstorm with slight and heavy hail
+            default:
+                return '❓'; // Unknown weather
+        }
+    }
+
+    // Fetch weather data from Flask backend
+    function fetchWeatherData() {
+        fetch('/weather')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Weather Data:", data); // Log the raw weather data for debugging
+
+                // Check if current weather data is available
+                if (data.temperature !== undefined && data.wind_speed !== undefined && data.wind_direction !== undefined) {
+                    // Convert temperature from Celsius to Fahrenheit
+                    const temperatureF = (data.temperature * 9 / 5) + 32;
+                    // Convert wind speed from km/h to mph
+                    const windSpeedMph = data.wind_speed * 0.621371;
+                    // Get the wind direction
+                    const windDirection = getCompassDirection(data.wind_direction);
+
+                    // Display current temperature, wind speed, and wind direction
+                    document.getElementById('weather-info').innerText = 
+                        `Current Temp: ${temperatureF.toFixed(1)}°F, Wind Speed: ${windSpeedMph.toFixed(1)} mph, Wind Direction: ${windDirection}`;
+                } else {
+                    console.warn("Some weather data is missing:", data);
+                    document.getElementById('weather-info').innerText = "Current weather data unavailable.";
+                }
+
+                // Check if daily weather data is available
+                if (data.daily && data.daily.temperature_max) {
+                    let forecastHTML = "<h4>Daily Forecast</h4><div class='forecast-container'>";
+
+                    // Loop through daily weather data
+                    for (let i = 0; i < data.daily.time.length; i++) {
+                        const date = new Date(data.daily.time[i]);
+                        const day = date.toLocaleDateString('en-US', { weekday: 'long' });
+                        const tempMaxF = (data.daily.temperature_max[i] * 9 / 5) + 32;
+                        const tempMinF = (data.daily.temperature_min[i] * 9 / 5) + 32;
+                        const precipitation = data.daily.precipitation_sum[i] * 0.0393701; // Convert mm to inches
+                        const precipitationProbability = data.daily.precipitation_probability[i];
+                        const windSpeedMph = data.daily.windspeed_max[i] * 0.621371;
+                        const windDirectionDaily = getCompassDirection(data.daily.wind_direction[i] || 0);
+
+                        // Generate weather icon based on the weather code
+                        let weatherIcon = '';
+                        const weatherCode = data.daily.weather_code[i];
+                        if (weatherCode === 0 || weatherCode === 1) {
+                            weatherIcon = '☀️'; // Clear sky
+                        } else if (weatherCode === 2 || weatherCode === 3) {
+                            weatherIcon = '☁️'; // Cloudy
+                        } else if (weatherCode === 45 || weatherCode === 48) {
+                            weatherIcon = '🌧️'; // Rain
+                        } else {
+                            weatherIcon = '❓'; // Unknown weather
+                        }
+
+                        // Add daily forecast HTML
+                        forecastHTML += `
+                            <div class='forecast-item'>
+                                <p><strong>${day}</strong></p>
+                                <p>${weatherIcon}</p>
+                                <p>Max: ${tempMaxF.toFixed(1)}°F</p>
+                                <p>Min: ${tempMinF.toFixed(1)}°F</p>
+                                <p>Precipitation: ${precipitation.toFixed(2)} in</p>
+                                <p>Chance of Precipitation: ${precipitationProbability}%</p>
+                                <p>Wind: ${windSpeedMph.toFixed(1)} mph, Direction: ${windDirectionDaily}</p>
+                            </div>`;
+                    }
+
+                    forecastHTML += "</div>"; // Close forecast-container
+                    document.getElementById('forecast').innerHTML = forecastHTML;
+                } else {
+                    console.warn("Daily weather data unavailable.");
+                    document.getElementById('forecast').innerText = "Daily weather data unavailable.";
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching weather data:", error);
+                document.getElementById('weather-info').innerText = "Failed to retrieve weather data.";
+            });
+    }
+
+    // Fetch weather data and update timezones on page load
+    fetchWeatherData();
+
+    // Set intervals to refresh weather data every 60 seconds
+    setInterval(fetchWeatherData, 60000);
+});
+
+        
+    </script>
+</body>
+</html>
+
+
