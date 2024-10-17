@@ -31,7 +31,7 @@ class Appointment(db.Model):
     description = db.Column(db.String(200))
     color = db.Column(db.String(20))  
 
-# User Preferences Model (for weather city and favorite sports teams)
+# User Preferences Model (for weather city)
 class UserPreference(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     favorite_city = db.Column(db.String(100))
